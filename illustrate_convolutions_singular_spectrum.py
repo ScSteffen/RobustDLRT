@@ -1,7 +1,10 @@
+from torchvision.models import resnet50, ResNet50_Weights
+
 import torch
 import matplotlib.pyplot as plt
 import os
-from transformers import ViTForImageClassification
+from itertools import permutations
+import torchvision.models as models
 
 
 def plot_singular_spectrum(model, output_dir="singular_spectrum"):
@@ -38,7 +41,9 @@ def plot_singular_spectrum(model, output_dir="singular_spectrum"):
     print(f"Singular spectrum plots saved in: {output_dir}")
 
 
-def plot_singular_spectrum_and_condition_numbers(model, output_dir="singular_spectrum"):
+def plot_singular_spectrum_and_condition_numbers(
+    weight_matrices, output_dir="singular_spectrum"
+):
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
@@ -46,17 +51,9 @@ def plot_singular_spectrum_and_condition_numbers(model, output_dir="singular_spe
     condition_numbers = []  # List to store condition numbers for each layer
 
     # Step 1: Read all weight matrices (or tensors) from the model
-    weight_matrices = []
-    for name, param in model.named_parameters():
-        if (
-            "weight" in name and param.dim() == 2
-        ):  # Only consider 2D weight matrices (ignore tensors with higher order)
-            weight_matrices.append((name, param.detach().cpu().numpy()))
-        else:
-            print(f"Skipping {name} (not a 2D matrix)")
 
     # Step 2 & 3: Compute SVD, plot singular values, and compute condition numbers
-    for idx, (param_name, weight_matrix) in enumerate(weight_matrices):
+    for idx, (weight_matrix, param_name) in enumerate(weight_matrices):
         # Compute the SVD
         u, s, vh = torch.linalg.svd(torch.tensor(weight_matrix), full_matrices=False)
 
@@ -101,14 +98,58 @@ def plot_singular_spectrum_and_condition_numbers(model, output_dir="singular_spe
     print(f"Product of all condition numbers: {total_condition_product}")
 
 
-# Load a pretrained ViT model from Hugging Face
-model = ViTForImageClassification.from_pretrained(
-    "google/vit-base-patch16-224",
-    torch_dtype=torch.float32,
-    ignore_mismatched_sizes=True,
+def get_matrices_recursive(module, flatten_dim=0, prefix=""):
+    matrices = []
+
+    # Recursively traverse all submodules
+    for name, layer in module.named_children():
+        full_name = f"{prefix}.{name}" if prefix else name  # Track the full path name
+
+        # If the layer itself has submodules, recurse into it
+        if len(list(layer.children())) > 0:
+            matrices.extend(
+                get_matrices_recursive(layer, flatten_dim, prefix=full_name)
+            )
+        else:
+            # Check if the layer has a weight parameter
+            if hasattr(layer, "weight") and isinstance(layer.weight, torch.Tensor):
+                weight_tensor = layer.weight
+
+                print(weight_tensor.dim())
+                # If tensor is a matrix (2D)
+                if weight_tensor.dim() == 2:
+                    matrices.append((weight_tensor, full_name + ".weight"))
+
+                # If tensor is higher-order
+                elif weight_tensor.dim() > 2:
+                    # Flatten the tensor along the specified dimension
+                    flattened = torch.flatten(
+                        weight_tensor, start_dim=flatten_dim, end_dim=-1
+                    )
+                    matrices.append((flattened, full_name + ".weight"))
+
+    return matrices
+
+
+# Old weights with accuracy 76.130%
+# resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+
+# New weights with accuracy 80.858%
+# model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+# Download VGG16 model with pretrained ImageNet weights
+vgg16 = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
+
+# Set the model to evaluation mode
+vgg16.eval()
+
+import torch
+import torch.nn as nn
+
+flatten_dim = 3
+
+matrices = get_matrices_recursive(vgg16, flatten_dim=1)
+
+
+plot_singular_spectrum_and_condition_numbers(
+    matrices, output_dir="vgg16_conv_layer_analysis_fDIM_" + str(flatten_dim)
 )
-# print(model)
-# exit(1)
-# Perform singular spectrum analysis on the model
-# plot_singular_spectrum(model)
-plot_singular_spectrum_and_condition_numbers(model)
