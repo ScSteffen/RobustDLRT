@@ -138,6 +138,7 @@ def get_matrices_recursive(module, flatten_dim=0, prefix=""):
 # model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
 # Download VGG16 model with pretrained ImageNet weights
 vgg16 = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
+#test
 
 # Set the model to evaluation mode
 vgg16.eval()
