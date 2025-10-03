@@ -2,11 +2,16 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.csv
-data/*
-*.pt
+*.gz
 *.png
+*.csv
 *.pdf
+*.tif
+*.jpg
+
+wandb/
+/models/
+*.pth
 # C extensions
 *.so
 
@@ -125,6 +130,9 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
+*.yaml
+*.pt
+*.bin
 # Environments
 .env
 .venv
@@ -133,6 +141,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+dataset/
 
 # Spyder project settings
 .spyderproject

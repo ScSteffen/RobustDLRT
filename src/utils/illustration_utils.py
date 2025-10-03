@@ -4,7 +4,6 @@ import torch
 import matplotlib.pyplot as plt
 import os
 from itertools import permutations
-import torchvision.models as models
 
 
 def plot_singular_spectrum(model, output_dir="singular_spectrum"):
@@ -38,7 +37,7 @@ def plot_singular_spectrum(model, output_dir="singular_spectrum"):
         plt.savefig(output_path)
         plt.close()
 
-    print(f"Singular spectrum plots saved in: {output_dir}")
+    # print(f"Singular spectrum plots saved in: {output_dir}")
 
 
 def plot_singular_spectrum_and_condition_numbers(
@@ -55,7 +54,14 @@ def plot_singular_spectrum_and_condition_numbers(
     # Step 2 & 3: Compute SVD, plot singular values, and compute condition numbers
     for idx, (weight_matrix, param_name) in enumerate(weight_matrices):
         # Compute the SVD
+        # print("Computing SVD of layer", idx)
+        # print("Shape of weight matrix:", weight_matrix.shape)
         u, s, vh = torch.linalg.svd(torch.tensor(weight_matrix), full_matrices=False)
+
+        # Compute condition number as ratio of largest to smallest singular value
+        condition_number = s.max() / s.min()
+        condition_numbers.append(condition_number)  # Store the condition number
+        # print(f"Condition number of {param_name} (Layer {idx}): {condition_number}")
 
         # Plot the singular values
         plt.figure()
@@ -68,13 +74,9 @@ def plot_singular_spectrum_and_condition_numbers(
 
         # Save the plot
         output_path = os.path.join(output_dir, f"{param_name}.png")
+        plt.tight_layout()
         plt.savefig(output_path)
         plt.close()
-
-        # Compute condition number as ratio of largest to smallest singular value
-        condition_number = s.max() / s.min()
-        condition_numbers.append(condition_number)  # Store the condition number
-        print(f"Condition number of {param_name} (Layer {idx}): {condition_number}")
 
         # Multiply to the total condition product
         total_condition_product *= condition_number
@@ -89,7 +91,7 @@ def plot_singular_spectrum_and_condition_numbers(
     plt.ylabel("Condition Number")
     plt.yscale("log")  # Log scale for better visualization of large condition numbers
     plt.grid(True)
-
+    plt.tight_layout()
     # Save the condition number plot
     plt.savefig(os.path.join(output_dir, "condition_numbers_over_layers.png"))
     plt.close()
@@ -100,13 +102,13 @@ def plot_singular_spectrum_and_condition_numbers(
 
 def get_matrices_recursive(module, flatten_dim=0, prefix=""):
     matrices = []
-
+    # print("flatten_dim", flatten_dim)
     # Recursively traverse all submodules
     for name, layer in module.named_children():
         full_name = f"{prefix}.{name}" if prefix else name  # Track the full path name
 
         # If the layer itself has submodules, recurse into it
-        if len(list(layer.children())) > 0:
+        if len(list(layer.children())) > 0 and not hasattr(layer, "S"):
             matrices.extend(
                 get_matrices_recursive(layer, flatten_dim, prefix=full_name)
             )
@@ -114,8 +116,9 @@ def get_matrices_recursive(module, flatten_dim=0, prefix=""):
             # Check if the layer has a weight parameter
             if hasattr(layer, "weight") and isinstance(layer.weight, torch.Tensor):
                 weight_tensor = layer.weight
-
-                print(weight_tensor.dim())
+                # print("======")
+                # print(weight_tensor.dim())
+                # print(weight_tensor.shape)
                 # If tensor is a matrix (2D)
                 if weight_tensor.dim() == 2:
                     matrices.append((weight_tensor, full_name + ".weight"))
@@ -123,34 +126,66 @@ def get_matrices_recursive(module, flatten_dim=0, prefix=""):
                 # If tensor is higher-order
                 elif weight_tensor.dim() > 2:
                     # Flatten the tensor along the specified dimension
-                    flattened = torch.flatten(
-                        weight_tensor, start_dim=flatten_dim, end_dim=-1
-                    )
-                    matrices.append((flattened, full_name + ".weight"))
+                    t = unfold_tensor(weight_tensor, mode=flatten_dim)
+                    matrices.append((t, full_name + ".weight"))
+                # print(matrices[-1][0].shape)
+                # print("---")
 
+            elif hasattr(layer, "S") and isinstance(layer.S, torch.Tensor):
+                weight_tensor = layer.S
+                rank = layer.r
+                # print("======")
+                # print(weight_tensor.dim())
+                # print(weight_tensor.shape)
+                # print("rank", rank)
+                # If tensor is a matrix (2D)
+                if weight_tensor.dim() == 2:
+                    matrices.append((weight_tensor[:rank, :rank], full_name + ".S"))
+
+                # If tensor is higher-order
+                elif weight_tensor.dim() > 2:
+                    # Flatten the tensor along the specified dimension
+                    t = unfold_tensor(
+                        weight_tensor[: rank[0], : rank[1], : rank[2], : rank[3]],
+                        mode=flatten_dim,
+                    )
+                    matrices.append((t, full_name + ".S"))
+                # print(matrices[-1][0].shape)
+                # print("---")
     return matrices
 
 
-# Old weights with accuracy 76.130%
-# resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+def unfold_tensor(tensor, mode):
+    # Rearrange dimensions to bring the unfolding mode to the front
+    permute_order = [mode] + [i for i in range(tensor.ndim) if i != mode]
+    permuted_tensor = tensor.permute(permute_order)
 
-# New weights with accuracy 80.858%
-# model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-# Download VGG16 model with pretrained ImageNet weights
-vgg16 = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
-#test
-
-# Set the model to evaluation mode
-vgg16.eval()
-
-import torch
-import torch.nn as nn
-
-flatten_dim = 3
-
-matrices = get_matrices_recursive(vgg16, flatten_dim=1)
+    # Reshape to unfold along the mode
+    unfolded_tensor = permuted_tensor.reshape(tensor.shape[mode], -1)
+    return unfolded_tensor
 
 
-plot_singular_spectrum_and_condition_numbers(
-    matrices, output_dir="vgg16_conv_layer_analysis_fDIM_" + str(flatten_dim)
-)
+def get_condition_number(weight_matrices):
+    # Ensure output directory exists
+
+    total_condition_product = 1  # Initialize product of condition numbers
+    condition_numbers = []  # List to store condition numbers for each layer
+
+    # Step 1: Read all weight matrices (or tensors) from the model
+
+    # Step 2 & 3: Compute SVD, plot singular values, and compute condition numbers
+    for idx, (weight_matrix, param_name) in enumerate(weight_matrices):
+        # Compute the SVD
+        # print("Computing SVD of layer", idx)
+        # print("Shape of weight matrix:", weight_matrix.shape)
+        u, s, vh = torch.linalg.svd(torch.tensor(weight_matrix), full_matrices=False)
+
+        # Compute condition number as ratio of largest to smallest singular value
+        condition_number = s.max() / s.min()
+        condition_numbers.append(condition_number)  # Store the condition number
+        # print(f"Condition number of {param_name} (Layer {idx}): {condition_number}")
+
+        # Multiply to the total condition product
+        total_condition_product *= condition_number
+
+    return total_condition_product, condition_numbers
