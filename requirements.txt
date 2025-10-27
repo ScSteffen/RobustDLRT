@@ -4,7 +4,7 @@ torchvision
 pandas
 tqdm
 wandb
-tensorly-torch
+tensorly
 tntorch
 transformers
 timm==1.0.15
