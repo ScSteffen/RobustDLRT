@@ -8,4 +8,4 @@ tensorly
 tntorch
 transformers
 timm==1.0.15
-
+tensorly-torch

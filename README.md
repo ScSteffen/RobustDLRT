@@ -27,7 +27,7 @@ Set up datasets
 
 1. put the data into `.dataset/data_adversarial_rs/<testcasename>`. The easiest way to get started is to run 
  ```
-    cd dataset/data_adversarial_rs
+    cd dataset
     python create_cifar10.py
 ```
 

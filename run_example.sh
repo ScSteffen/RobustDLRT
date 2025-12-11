@@ -19,17 +19,17 @@ epsilons_3="0.025 0.1 0.75"
 models="vgg16"
 target_model="vgg16"
 dataset=3
-crop_size=224
+crop_size=32
 
 # DLRT parameters
 dlrt="0" # 0 = baseline training
-tolerances="0.01"
+tolerances="0.1"
 rmax="200"
 num_local_iter=10
 init_r=150
 
 # training parameters
-train_batch_size=16
+train_batch_size=128
 val_batch_size=128
 num_epochs=20
 num_epochs_ft=1
@@ -39,7 +39,7 @@ wandb=1
 wandb_tag="example"
 
 # data root
-data_root="./dataset/data_adversarial_rs/"
+data_root="./dataset/"
 
 # decide folder based on dlrt flag
 if [ "$dlrt" = "0" ]; then
