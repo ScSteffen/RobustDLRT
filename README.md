@@ -22,6 +22,14 @@ Robustness in Compressed Representations](https://openreview.net/pdf?id=yZY0w0Nr
     source venv/bin/activate
     pip install -r requirements.txt
     ```
+##
+Set up datasets
+
+1. put the data into `.dataset/data_adversarial_rs/<testcasename>`. The easiest way to get started is to run 
+ ```
+    cd dataset/data_adversarial_rs
+    python create_cifar10.py
+```
 
 ## Example run
 ```
