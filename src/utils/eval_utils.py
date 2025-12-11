@@ -337,14 +337,23 @@ def recreate_image(im_as_var):
     """
     reverse_mean = [-0.485, -0.456, -0.406]
     reverse_std = [1 / 0.229, 1 / 0.224, 1 / 0.225]
-    recreated_im = im_as_var.data.numpy()[0].copy()
+    recreated_im = im_as_var.detach().numpy()[0].copy()
     for c in range(3):
         recreated_im[c] /= reverse_std[c]
         recreated_im[c] -= reverse_mean[c]
-    recreated_im[recreated_im > 1] = 1
-    recreated_im[recreated_im < 0] = 0
-    recreated_im = np.round(recreated_im * 255)
+    # clamp to [0, 1]
+    recreated_im = np.clip(recreated_im, 0.0, 1.0)
 
-    recreated_im = np.uint8(recreated_im).transpose(1, 2, 0)
+    # kill NaNs and infs explicitly
+    recreated_im = np.nan_to_num(
+        recreated_im,
+        nan=0.0,
+        posinf=1.0,
+        neginf=0.0,
+    )
+
+    recreated_im = np.round(recreated_im * 255).astype(np.uint8)
+    recreated_im = recreated_im.transpose(1, 2, 0)  # [H, W, C]
+
     # Convert RBG to GBR
     return recreated_im

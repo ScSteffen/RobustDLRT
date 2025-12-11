@@ -14,6 +14,7 @@ def main(args):
 
         adv_root_dir = (
             args.data_root_dir
+            + "/data_adversarial_rs/"
             + DataName
             + "_adv/"
             + args.attack_func
@@ -24,6 +25,7 @@ def main(args):
     else:
         adv_root_dir = (
             args.data_root_dir
+            + "/data_adversarial_rs/"
             + DataName
             + "_adv/"
             + args.attack_func
@@ -152,7 +154,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data_root_dir",
         type=str,
-        default="./dataset/data_adversarial_rs/",
+        default="./dataset/",
         help="data path for imagenet",
     )
     parser.add_argument(

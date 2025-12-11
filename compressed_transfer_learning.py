@@ -8,13 +8,11 @@ from torch.utils import data
 from torchvision import transforms
 
 
-from src.utils.eval_utils import test_top5_acc, test_top5_acc_attc
-from src.utils.io_utils import create_csv_files
+from src.utils.eval_utils import test_top5_acc
 from src.models.model_portfolio import load_model
 from src.low_rank_layers.layer_utils import transform_to_low_rank
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from src.utils.general_utils import get_available_device
-from src.utils.attacks import get_attack
 from src.utils.data_utils import get_dataset_info, get_dataloader
 
 

@@ -96,9 +96,10 @@ def main(args):
                 ),
             ]
         )
+
         imloader = data.DataLoader(
             scene_dataset(
-                root_dir=args.save_path_prefix,
+                root_dir=args.data_root_dir,
                 pathfile="./dataset/" + DataName + "_test.txt",
                 transform=composed_transforms,
                 classname="",
@@ -122,11 +123,10 @@ def main(args):
 
         imloader = data.DataLoader(
             scene_dataset(
-                root_dir=save_path_prefix,
+                root_dir=args.data_root_dir,
                 pathfile="./dataset/" + DataName + "_test.txt",
                 transform=composed_transforms,
                 classname="",
-                mode="adv",
             ),
             batch_size=1,
             shuffle=True,

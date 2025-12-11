@@ -294,7 +294,7 @@ def get_adv_valloader(args, DataName, classname, adv_root_dir):
 
         valid_transform = T.Compose(
             [
-                transforms.Resize(size=(args.crop_size, args.crop_size)),
+                T.Resize(size=(args.crop_size, args.crop_size)),
                 T.ToTensor(),
                 T.Normalize(*stats),
             ]

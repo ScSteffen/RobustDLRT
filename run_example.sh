@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# For more test cases, please refer to Table 8 in the paper (https://arxiv.org/pdf/2505.08022)
+
 run_train=true
 run_attack=true
 iterations="1"
@@ -88,7 +90,7 @@ run_attack_test() {
             --network $model \
             --crop_size $crop_size \
             --attack_epsilon $eps \
-            --save_path_prefix $data_root \
+            --save_path_prefix $data_root/data_adversarial_rs/ \
             --model_root_dir ./models/ \
             --data_root_dir $data_root
 
